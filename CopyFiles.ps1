@@ -68,6 +68,7 @@ $mappings = @{
     "ajax"       = "typhoon"      # Typhoon (Different stage order + possible extra level)
     "trackfld"   = "atlantol"     # Atlant Olympic (Atlanta Olympics variant)
     "aburner2"   = "aburner"      # Afterburner (Original)
+    "trog"       = "trogpa4"      # Prototype, plays more stategic like
 
     # --- MECHANICAL FIXES & PLAYER LOGIC ---
     "ghouls"     = "daimakai"     # Ghouls 'n Ghosts (Japan - Fairer)
