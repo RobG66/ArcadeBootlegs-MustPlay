@@ -2,5 +2,3 @@
 Must play bootleg variants (in Mame)
 
  The script identifies and created a copy of the clones from merged parent files.  How you want to incorporate these into your collection is up to you.  I created a new system in Batocera for this.
-
- 
