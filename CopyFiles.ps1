@@ -4,7 +4,7 @@ $destPath   = ""      # Destination folder for these must play clones/hacks
 
 $mappings = @{
     # --- PERFORMANCE, SPEED & RAPID FIRE ---
-    "1942"       = "1942b"        # 1942 Supercharger (Faster/Rapid Fire)
+    "1942"       = "1942h"        # 1942 Supercharger (Faster/Rapid Fire)
     "1943"       = "1943kai"      # 1943 Kai (Better balanced, faster)
     "ddragon"    = "ddragonb"     # Double Dragon (Faster CPU/No Slowdown)
     "mslug2"     = "mslug2t"      # Metal Slug 2 Turbo (No Slowdown/Lag)
