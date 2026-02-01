@@ -269,5 +269,3 @@ Write-Host "Successfully created:   $successCount" -ForegroundColor Green
 Write-Host "Missing source files:   $missingCount" -ForegroundColor Red
 Write-Host "=================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Press any key to exit..." -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
