@@ -1,6 +1,6 @@
 # --- CONFIGURATION ---
-$sourcePath = ""      # Path to your mame merged ROM set
-$destPath   = ""      # Destination folder for these must play clones/hacks
+$sourcePath = "z:\roms\mame"      # Path to your mame merged ROM set
+$destPath   = "Z:\roms\arcadebootlegs"      # Destination folder for these must play clones/hacks
 
 $mappings = @{
     # --- PERFORMANCE, SPEED & RAPID FIRE ---
@@ -114,11 +114,121 @@ $mappings = @{
     "zeroteam"   = "zerotm2k,nzeroteam"  # Zero Team 2000 + New Zero Team (must unclone both)
 }
 
-# --- EXECUTION LOGIC ---
-if (-not (Test-Path $destPath)) { 
-    New-Item -ItemType Directory -Path $destPath | Out-Null
+# --- FUNCTION: CREATE FLATTENED ZIP ---
+function Create-FlattenedZip {
+    param(
+        [string]$sourceZipPath,
+        [string]$destZipPath
+    )
+    
+    $tempFolder = Join-Path $env:TEMP "zip_create_$(Get-Random)"
+    New-Item -ItemType Directory -Path $tempFolder | Out-Null
+    
+    try {
+        # Extract source zip to temp folder
+        Expand-Archive -Path $sourceZipPath -DestinationPath $tempFolder -Force
+        
+        # Get the destination zip name without extension
+        $destZipName = [System.IO.Path]::GetFileNameWithoutExtension($destZipPath)
+        
+        # Check if matching subfolder exists (case-insensitive)
+        $matchingFolder = Get-ChildItem -Path $tempFolder -Directory | Where-Object { $_.Name -eq $destZipName } | Select-Object -First 1
+        
+        if ($matchingFolder) {
+            Write-Host "    Found matching subfolder: $($matchingFolder.Name)" -ForegroundColor Gray
+            
+            # Get all files from the matching subfolder (recursively)
+            $filesToMove = Get-ChildItem -Path $matchingFolder.FullName -File -Recurse
+            
+            if ($filesToMove.Count -gt 0) {
+                # Move each file to root, overwriting if necessary
+                foreach ($file in $filesToMove) {
+                    $destPath = Join-Path $tempFolder $file.Name
+                    
+                    if (Test-Path $destPath) {
+                        Remove-Item -Path $destPath -Force
+                    }
+                    
+                    Move-Item -Path $file.FullName -Destination $destPath -Force
+                }
+                
+                # Remove the now-empty subfolder
+                Remove-Item -Path $matchingFolder.FullName -Recurse -Force
+            }
+        }
+        
+        # Remove all OTHER subfolders
+        $allSubfolders = Get-ChildItem -Path $tempFolder -Directory
+        
+        if ($allSubfolders.Count -gt 0) {
+            foreach ($folder in $allSubfolders) {
+                Remove-Item -Path $folder.FullName -Recurse -Force
+            }
+        }
+        
+        # Create new zip at destination
+        $filesToCompress = Get-ChildItem -Path $tempFolder -File
+        if ($filesToCompress.Count -gt 0) {
+            Compress-Archive -Path "$tempFolder\*" -DestinationPath $destZipPath -Force
+            Write-Host "    Created flattened zip" -ForegroundColor Gray
+            return $true
+        } else {
+            Write-Warning "    No files to compress"
+            return $false
+        }
+        
+    } catch {
+        Write-Warning "    Error: $($_.Exception.Message)"
+        return $false
+    } finally {
+        # Cleanup temp folder
+        Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
 
+# --- EXECUTION LOGIC ---
+
+# Validate source path
+if ([string]::IsNullOrWhiteSpace($sourcePath)) {
+    Write-Error "Source path is empty. Please edit the script and set the `$sourcePath variable."
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
+
+if (-not (Test-Path $sourcePath)) {
+    Write-Error "Source path does not exist: $sourcePath"
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
+
+# Validate destination path
+if ([string]::IsNullOrWhiteSpace($destPath)) {
+    Write-Error "Destination path is empty. Please edit the script and set the `$destPath variable."
+    Write-Host "Press any key to exit..."
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    exit 1
+}
+
+# Create destination folder if needed
+if (-not (Test-Path $destPath)) { 
+    try {
+        New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+        Write-Host "Created destination folder: $destPath" -ForegroundColor Cyan
+    } catch {
+        Write-Error "Failed to create destination folder: $destPath"
+        Write-Error $_.Exception.Message
+        Write-Host "Press any key to exit..."
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        exit 1
+    }
+}
+
+Write-Host ""
+Write-Host "Source path: $sourcePath" -ForegroundColor Cyan
+Write-Host "Destination path: $destPath" -ForegroundColor Cyan
+Write-Host ""
 Write-Host "Initializing copy of Master Clone Set..." -ForegroundColor Cyan
 Write-Host ""
 
@@ -139,9 +249,12 @@ foreach ($parent in $mappings.Keys) {
         $destFile = Join-Path $destPath "$clone.zip"
         
         if (Test-Path $sourceFile) {
-            Copy-Item -Path $sourceFile -Destination $destFile -Force
-            Write-Host "SUCCESS: Created $clone.zip from $parent.zip" -ForegroundColor Green
-            $successCount++
+            Write-Host "Processing: $clone.zip from $parent.zip" -ForegroundColor Green
+            
+            # Extract, flatten, and create new zip in one step
+            if (Create-FlattenedZip -sourceZipPath $sourceFile -destZipPath $destFile) {
+                $successCount++
+            }
         } else {
             Write-Host "MISSING: $parent.zip not found in $sourcePath" -ForegroundColor Red
             $missingCount++
@@ -155,3 +268,6 @@ Write-Host "Total clones processed: $totalClones" -ForegroundColor White
 Write-Host "Successfully created:   $successCount" -ForegroundColor Green
 Write-Host "Missing source files:   $missingCount" -ForegroundColor Red
 Write-Host "=================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Press any key to exit..." -ForegroundColor Yellow
+$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
